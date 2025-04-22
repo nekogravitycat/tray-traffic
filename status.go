@@ -2,10 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"time"
+
+	"github.com/gen2brain/beeep"
 )
+
+const statusFilePath = "status.json"
 
 type Status struct {
 	InterfaceName  string    `json:"interface_name"`
@@ -15,7 +20,15 @@ type Status struct {
 	Date           time.Time `json:"date"`
 }
 
-const statusFilePath = "status.json"
+func NewStatus(interfaceName string, thresholdBytes int) *Status {
+	return &Status{
+		InterfaceName:  interfaceName,
+		TotalBytes:     0,
+		ThresholdBytes: thresholdBytes,
+		Notified:       false,
+		Date:           time.Now(),
+	}
+}
 
 func LoadOrDefaultStatus() *Status {
 	// Check if the status file exists
@@ -47,12 +60,38 @@ func (s *Status) Save() error {
 	return json.NewEncoder(f).Encode(s)
 }
 
-func NewStatus(interfaceName string, thresholdBytes int) *Status {
-	return &Status{
-		InterfaceName:  interfaceName,
-		TotalBytes:     0,
-		ThresholdBytes: thresholdBytes,
-		Notified:       false,
-		Date:           time.Now(),
-	}
+func startStatusMonitor(status *Status) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Notify if the threshold has been exceeded
+			if status.TotalBytes > status.ThresholdBytes && !status.Notified {
+				totalBytesStr := formatBytes(status.TotalBytes)
+				thresholdBytesStr := formatBytes(status.ThresholdBytes)
+				fmt.Printf("Threshold exceeded: %s / %s\n", totalBytesStr, thresholdBytesStr)
+				err := beeep.Notify(
+					"Traffic Threshold Exceeded",
+					fmt.Sprintf("You have exceeded your threshold: %s / %s", totalBytesStr, thresholdBytesStr),
+					*iconPath,
+				)
+				if err != nil {
+					log.Println("Error sending notification:", err)
+				}
+				status.Notified = true
+			}
+			// Reset status if the date has changed
+			if status.Date.Day() != time.Now().Day() {
+				status.TotalBytes = 0
+				status.Notified = false
+				status.Date = time.Now()
+			}
+			// Save the status to the file
+			err := status.Save()
+			if err != nil {
+				log.Println("Error saving status:", err)
+			}
+		}
+	}()
 }

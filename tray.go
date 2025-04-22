@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/getlantern/systray"
@@ -9,9 +10,35 @@ import (
 
 var ifaceItems = make(map[string]*systray.MenuItem)
 
+func onTrayReady() {
+	populateTray()
+
+	status = LoadOrDefaultStatus()
+	startStatusMonitor(status)
+
+	if status.InterfaceName == "" {
+		status.InterfaceName = defaultInterface()
+	}
+	if status.InterfaceName == "" {
+		log.Fatal("No network interface found")
+		return
+	}
+	selectInterface(status.InterfaceName)
+	ifaceItems[status.InterfaceName].Check() // Check the selected interface item
+}
+
+func onTrayExit() {
+	fmt.Println("Exiting...")
+	if monitor != nil {
+		monitor.Stop()
+	}
+	systray.Quit()
+}
+
 func populateTray() {
 	systray.SetTitle("Tray Traffic Monitor")
 	systray.SetTooltip("Monitor network traffic and notify on threshold exceedance")
+	systray.SetIcon(IconArray)
 
 	// Create the menu for selecting the interface
 	ifacesMenu := systray.AddMenuItem("Select Interface", "Select the network interface to monitor")

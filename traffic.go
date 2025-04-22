@@ -116,9 +116,9 @@ func isLocalIP(ipStr string) bool {
 // Format the byte size into a human-readable string (KB, MB, GB, etc.)
 func formatBytes(bytes int) string {
 	const (
-		KB = 1 << 10
-		MB = 1 << 20
-		GB = 1 << 30
+		KB = 1000
+		MB = 1000 * KB
+		GB = 1000 * MB
 	)
 
 	switch {
