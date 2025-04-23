@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 )
 
@@ -54,38 +53,31 @@ func (monitor *TrafficMonitor) Start() error {
 			case <-monitor.stopCh:
 				return
 			case packet := <-packetSource.Packets():
+				// Check if the packet is nil
 				if packet == nil {
 					continue
 				}
 
-				// Extract IP layer (either IPv4 or IPv6)
-				ipLayer := packet.Layer(layers.LayerTypeIPv4)
-				if ipLayer == nil {
-					ipLayer = packet.Layer(layers.LayerTypeIPv6)
-				}
-				if ipLayer == nil {
+				// Extract the network layer from the packet
+				netLayer := packet.NetworkLayer()
+				if netLayer == nil {
 					continue
 				}
 
-				var srcIP, dstIP string
-				switch layer := ipLayer.(type) {
-				case *layers.IPv4:
-					srcIP = layer.SrcIP.String()
-					dstIP = layer.DstIP.String()
-				case *layers.IPv6:
-					srcIP = layer.SrcIP.String()
-					dstIP = layer.DstIP.String()
-				}
+				// Extract the source and destination IP addresses
+				srcIP, dstIP := netLayer.NetworkFlow().Endpoints()
+				srcIPStr := srcIP.String()
+				dstIPStr := dstIP.String()
 
 				// Skip local traffic if the flag is enabled
-				if monitor.ExcludeLocal && isLocalIP(srcIP) && isLocalIP(dstIP) {
+				if monitor.ExcludeLocal && isLocalIP(srcIPStr) && isLocalIP(dstIPStr) {
 					continue
 				}
 
 				// Send the packet info through the output channel
 				monitor.Output <- PacketInfo{
-					SrcIP:     srcIP,
-					DstIP:     dstIP,
+					SrcIP:     srcIPStr,
+					DstIP:     dstIPStr,
 					SizeBytes: packet.Metadata().Length,
 				}
 			}
