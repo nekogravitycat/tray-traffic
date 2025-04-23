@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/gen2brain/beeep"
-	"github.com/getlantern/systray"
 	"github.com/google/gopacket/pcap"
 )
 
@@ -36,12 +35,9 @@ func selectInterface(ifaceName string) {
 }
 
 func processPackets() {
-	threasholdBytesStr := formatBytes(status.ThresholdBytes)
 	for packetInfo := range monitor.Output {
 		status.TotalBytes += packetInfo.SizeBytes
-		totalBytesStr := formatBytes(status.TotalBytes)
-		log.Printf("%s -> %s (%dB / %s)\n", packetInfo.SrcIP, packetInfo.DstIP, packetInfo.SizeBytes, totalBytesStr)
-		systray.SetTooltip(fmt.Sprintf("%s / %s", totalBytesStr, threasholdBytesStr))
+		//log.Printf("%s -> %s (%dB / %s)\n", packetInfo.SrcIP, packetInfo.DstIP, packetInfo.SizeBytes, formatBytes(status.TotalBytes))
 	}
 }
 

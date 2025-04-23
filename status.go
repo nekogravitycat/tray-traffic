@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gen2brain/beeep"
+	"github.com/getlantern/systray"
 )
 
 const statusFilePath = "status.json"
@@ -66,11 +67,13 @@ func startStatusMonitor(status *Status) {
 		defer ticker.Stop()
 
 		for range ticker.C {
+			// Update the tooltip with the current status
+			totalBytesStr := formatBytes(status.TotalBytes)
+			thresholdBytesStr := formatBytes(status.ThresholdBytes)
+			systray.SetTooltip(fmt.Sprintf("%s / %s", totalBytesStr, thresholdBytesStr))
 			// Notify if the threshold has been exceeded
 			if status.TotalBytes > status.ThresholdBytes && !status.Notified {
-				totalBytesStr := formatBytes(status.TotalBytes)
-				thresholdBytesStr := formatBytes(status.ThresholdBytes)
-				fmt.Printf("Threshold exceeded: %s / %s\n", totalBytesStr, thresholdBytesStr)
+				log.Printf("Threshold exceeded: %s / %s\n", totalBytesStr, thresholdBytesStr)
 				err := beeep.Notify(
 					"Traffic Threshold Exceeded",
 					fmt.Sprintf("You have exceeded your threshold: %s / %s", totalBytesStr, thresholdBytesStr),
